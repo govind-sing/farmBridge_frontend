@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-// -----------------------
-// DATA ARRAYS
-// -----------------------
 
 // 50 Common Food Ingredients
 const foodIngredients = [
@@ -142,16 +139,16 @@ const prohibitedCosmeticIngredients = [
 // INGREDIENT MATCHER COMPONENT
 // -----------------------
 function IngredientMatcher() {
-  const [productType, setProductType] = useState('Food'); // 'Food' or 'Cosmetic'
+  const [productType, setProductType] = useState('Food'); 
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState([]);
 
   const getSearchLink = (ingredient, type) => {
     const encodedName = encodeURIComponent(ingredient);
     if (type === 'Food') {
-      return `https://www.google.com/search?q=${encodedName}+in+foods`; // PubChem for food ingredients
+      return `https://www.google.com/search?q=${encodedName}+in+foods`; 
     } else {
-      return `https://www.google.com/search?q=${encodedName}+in+cosmetics`; // EWG Skin Deep for cosmetics
+      return `https://www.google.com/search?q=${encodedName}+in+cosmetics`; 
     }
   };
 

@@ -1,9 +1,8 @@
-// frontend/src/components/ProfilePage.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCart, removeFromCart, getUserInfo, logout, updateCartQuantity, getOrders, getBuyerOrders, markOrderAsDone, listProduct, updateAddress, getSellerProducts, updateProduct } from '../apiAxios';
+import { getCart, removeFromCart, getUserInfo, logout, updateCartQuantity, getOrders, getBuyerOrders, markOrderAsDone, listProduct, updateAddress, getSellerProducts, updateProduct, BASE_URL } from '../apiAxios';
 
-const OrderCard = ({ order, formatPaymentMethod, isSeller = false, onMarkAsDone }) => {
+const OrderCard = ({ order, formatPaymentMethod, isSeller = false, onMarkAsDone, loadingButtons }) => {
   const sellerAmount = order.products.reduce((total, product) => {
     const price = product.productId?.price || 0;
     const quantity = product.quantity || 0;
@@ -38,10 +37,10 @@ const OrderCard = ({ order, formatPaymentMethod, isSeller = false, onMarkAsDone 
       {isSeller && order.status === 'pending' && (
         <button
           onClick={() => onMarkAsDone(order._id)}
-          disabled={order.loading}
-          className={`mt-2 w-full px-3 py-1 bg-blue-500 text-white rounded ${order.loading ? 'opacity-50' : 'hover:bg-blue-600'} transition-colors`}
+          disabled={loadingButtons[order._id]}
+          className={`mt-2 w-full px-3 py-1 bg-blue-500 text-white rounded ${loadingButtons[order._id] ? 'blink opacity-50' : 'hover:bg-blue-600'} transition-colors`}
         >
-          Mark as Done
+          {loadingButtons[order._id] ? 'Processing...' : 'Mark as Done'}
         </button>
       )}
     </div>
@@ -51,7 +50,8 @@ const OrderCard = ({ order, formatPaymentMethod, isSeller = false, onMarkAsDone 
 function ProfilePage() {
   const [cart, setCart] = useState([]);
   const [userInfo, setUserInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial page load and non-cart operations
+  const [loadingButtons, setLoadingButtons] = useState({}); // For per-button loading
   const [error, setError] = useState(null);
   const [orders, setOrders] = useState([]);
   const [buyerOrders, setBuyerOrders] = useState([]);
@@ -131,6 +131,7 @@ function ProfilePage() {
       navigate('/auth');
     } catch (err) {
       setError('Error logging out. Please try again.');
+      console.error('Error logging out:', err);
     } finally {
       setLoading(false);
     }
@@ -141,15 +142,15 @@ function ProfilePage() {
     if (!item) return;
     const newQuantity = Math.max(1, item.quantity + delta);
     try {
-      setLoading(true);
+      setLoadingButtons((prev) => ({ ...prev, [productId]: true }));
       const response = await updateCartQuantity(productId, newQuantity);
       setCart(response.data.products || []);
       setError(null);
     } catch (err) {
-      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : 'Failed to update quantity.');
+      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : err.response?.data?.msg || 'Failed to update quantity.');
       if (err.response?.status === 401) navigate('/auth');
     } finally {
-      setLoading(false);
+      setLoadingButtons((prev) => ({ ...prev, [productId]: false }));
     }
   };
 
@@ -157,31 +158,31 @@ function ProfilePage() {
 
   const handleRemoveFromCart = async (productId) => {
     try {
-      setLoading(true);
+      setLoadingButtons((prev) => ({ ...prev, [productId]: true }));
       const response = await removeFromCart(productId);
       setCart(response.data.products || []);
       setError(null);
     } catch (err) {
-      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : 'Failed to remove item.');
+      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : err.response?.data?.msg || 'Failed to remove item.');
       if (err.response?.status === 401) navigate('/auth');
     } finally {
-      setLoading(false);
+      setLoadingButtons((prev) => ({ ...prev, [productId]: false }));
     }
   };
 
   const handleMarkAsDone = async (orderId) => {
     try {
-      setLoading(true);
+      setLoadingButtons((prev) => ({ ...prev, [orderId]: true }));
       await markOrderAsDone(orderId);
-      setOrders(orders.map(order => 
+      setOrders(orders.map((order) =>
         order._id === orderId ? { ...order, status: 'completed' } : order
       ));
       setError(null);
     } catch (err) {
-      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : 'Failed to mark order as done.');
+      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : err.response?.data?.msg || 'Failed to mark order as done.');
       if (err.response?.status === 401) navigate('/auth');
     } finally {
-      setLoading(false);
+      setLoadingButtons((prev) => ({ ...prev, [orderId]: false }));
     }
   };
 
@@ -220,7 +221,7 @@ function ProfilePage() {
       setError(null);
       setShowAddressModal(false);
     } catch (err) {
-      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : 'Failed to update address.');
+      setError(err.response?.status === 401 ? 'Session expired. Please log in again.' : err.response?.data?.msg || 'Failed to update address.');
       if (err.response?.status === 401) navigate('/auth');
     } finally {
       setLoading(false);
@@ -246,7 +247,7 @@ function ProfilePage() {
       }
 
       const response = await updateProduct(productId, formData);
-      setSellerProducts(sellerProducts.map(p => 
+      setSellerProducts(sellerProducts.map((p) =>
         p._id === productId ? response.data.product : p
       ));
       setEditProduct(null);
@@ -277,9 +278,9 @@ function ProfilePage() {
     }
   };
 
-  const unfulfilledOrders = orders.filter(order => order.status === 'pending');
+  const unfulfilledOrders = orders.filter((order) => order.status === 'pending');
   const fulfilledOrders = orders
-    .filter(order => order.status === 'completed')
+    .filter((order) => order.status === 'completed')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 10);
   const last10BuyerOrders = buyerOrders
@@ -294,8 +295,8 @@ function ProfilePage() {
         </h1>
         <div className="relative flex items-center gap-2">
           {userInfo?.role === 'community' && (
-            <span 
-              className={`w-2 h-2 rounded-full ${refreshing ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} 
+            <span
+              className={`w-2 h-2 rounded-full ${refreshing ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}
               title="Checking for new orders"
             />
           )}
@@ -364,7 +365,7 @@ function ProfilePage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`px-4 py-2 rounded text-white ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
+                  className={`px-4 py-2 rounded text-white ${loading ? 'bg-gray-400 blink' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
                 >
                   {loading ? 'Updating...' : 'Save'}
                 </button>
@@ -396,7 +397,7 @@ function ProfilePage() {
             <button
               onClick={handleLogout}
               disabled={loading}
-              className={`w-full md:w-auto px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400' : 'bg-red-600 hover:bg-red-700'} transition-colors shadow-md`}
+              className={`w-full md:w-auto px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400 blink' : 'bg-red-600 hover:bg-red-700'} transition-colors shadow-md`}
             >
               {loading ? 'Processing...' : 'Logout'}
             </button>
@@ -409,10 +410,10 @@ function ProfilePage() {
                     <p className="text-gray-600 text-center">Your cart is empty.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {cart.map(item => (
+                      {cart.map((item) => (
                         <div key={item.productId._id} className="bg-gray-50 p-4 rounded-lg shadow-md hover:shadow-xl transition-all">
                           <img
-                            src={`http://localhost:5001${item.productId.image || '/uploads/farm.jpg'}`}
+                            src={`${BASE_URL}${item.productId.image || '/Uploads/farm.jpg'}`}
                             alt={item.productId.name}
                             className="w-24 h-24 object-cover rounded-md mb-2"
                           />
@@ -423,26 +424,26 @@ function ProfilePage() {
                             <div className="flex items-center">
                               <button
                                 onClick={() => handleQuantityChange(item.productId._id, -1)}
-                                disabled={loading}
-                                className={`px-3 py-1 bg-gray-200 rounded-l-md ${loading ? 'opacity-50' : 'hover:bg-gray-300'} transition-colors`}
+                                disabled={loadingButtons[item.productId._id]}
+                                className={`px-3 py-1 bg-gray-200 rounded-l-md ${loadingButtons[item.productId._id] ? 'blink opacity-50' : 'hover:bg-gray-300'} transition-colors`}
                               >
                                 -
                               </button>
                               <span className="px-4 py-1 bg-gray-100 rounded">{item.quantity} kg</span>
                               <button
                                 onClick={() => handleQuantityChange(item.productId._id, 1)}
-                                disabled={loading}
-                                className={`px-3 py-1 bg-gray-200 rounded-r-md ${loading ? 'opacity-50' : 'hover:bg-gray-300'} transition-colors`}
+                                disabled={loadingButtons[item.productId._id]}
+                                className={`px-3 py-1 bg-gray-200 rounded-r-md ${loadingButtons[item.productId._id] ? 'blink opacity-50' : 'hover:bg-gray-300'} transition-colors`}
                               >
                                 +
                               </button>
                             </div>
                             <button
                               onClick={() => handleRemoveFromCart(item.productId._id)}
-                              disabled={loading}
-                              className={`w-full sm:w-auto px-3 py-1 bg-red-500 text-white rounded ${loading ? 'opacity-50' : 'hover:bg-red-600'} transition-colors`}
+                              disabled={loadingButtons[item.productId._id]}
+                              className={`w-full sm:w-auto px-3 py-1 bg-red-500 text-white rounded ${loadingButtons[item.productId._id] ? 'blink opacity-50' : 'hover:bg-red-600'} transition-colors`}
                             >
-                              Remove
+                              {loadingButtons[item.productId._id] ? 'Removing...' : 'Remove'}
                             </button>
                           </div>
                         </div>
@@ -457,9 +458,9 @@ function ProfilePage() {
                       <button
                         onClick={handleCheckout}
                         disabled={loading}
-                        className={`mt-4 w-full px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} transition-colors`}
+                        className={`mt-4 w-full px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400 blink' : 'bg-green-600 hover:bg-green-700'} transition-colors`}
                       >
-                        Checkout
+                        {loading ? 'Processing...' : 'Checkout'}
                       </button>
                     </div>
                   )}
@@ -472,8 +473,13 @@ function ProfilePage() {
                       <p className="text-gray-600 text-center">No past orders.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {last10BuyerOrders.map(order => (
-                          <OrderCard key={order._id} order={order} formatPaymentMethod={formatPaymentMethod} />
+                        {last10BuyerOrders.map((order) => (
+                          <OrderCard
+                            key={order._id}
+                            order={order}
+                            formatPaymentMethod={formatPaymentMethod}
+                            loadingButtons={loadingButtons}
+                          />
                         ))}
                       </div>
                     )}
@@ -490,10 +496,10 @@ function ProfilePage() {
                     <p className="text-gray-600 text-center">No products listed.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {sellerProducts.map(product => (
+                      {sellerProducts.map((product) => (
                         <div key={product._id} className="bg-gray-50 p-4 rounded-lg shadow-md hover:shadow-xl transition-all">
                           <img
-                            src={`http://localhost:5001${product.image || '/uploads/farm.jpg'}`}
+                            src={`${BASE_URL}${product.image || '/Uploads/farm.jpg'}`}
                             alt={product.name}
                             className="w-24 h-24 object-cover rounded-md mb-2"
                           />
@@ -528,14 +534,14 @@ function ProfilePage() {
                                 <button
                                   onClick={() => handleUpdateProduct(product._id)}
                                   disabled={loading}
-                                  className={`flex-1 px-3 py-1 bg-blue-500 text-white rounded ${loading ? 'opacity-50' : 'hover:bg-blue-600'} transition-colors`}
+                                  className={`flex-1 px-3 py-1 bg-blue-500 text-white rounded ${loading ? 'blink opacity-50' : 'hover:bg-blue-600'} transition-colors`}
                                 >
-                                  Save
+                                  {loading ? 'Saving...' : 'Save'}
                                 </button>
                                 <button
                                   onClick={() => setEditProduct(null)}
                                   disabled={loading}
-                                  className="flex-1 px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 transition-colors"
+                                  className={`flex-1 px-3 py-1 bg-gray-300 rounded ${loading ? 'blink opacity-50' : 'hover:bg-gray-400'} transition-colors`}
                                 >
                                   Cancel
                                 </button>
@@ -548,9 +554,9 @@ function ProfilePage() {
                               <button
                                 onClick={() => handleEditProduct(product)}
                                 disabled={loading}
-                                className={`mt-2 w-full px-3 py-1 bg-green-500 text-white rounded ${loading ? 'opacity-50' : 'hover:bg-green-600'} transition-colors`}
+                                className={`mt-2 w-full px-3 py-1 bg-green-500 text-white rounded ${loading ? 'blink opacity-50' : 'hover:bg-green-600'} transition-colors`}
                               >
-                                Edit
+                                {loading ? 'Processing...' : 'Edit'}
                               </button>
                             </div>
                           )}
@@ -566,13 +572,14 @@ function ProfilePage() {
                     <p className="text-gray-600 text-center">No orders to fulfill.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {unfulfilledOrders.map(order => (
+                      {unfulfilledOrders.map((order) => (
                         <OrderCard
                           key={order._id}
                           order={order}
                           formatPaymentMethod={formatPaymentMethod}
                           isSeller={true}
                           onMarkAsDone={handleMarkAsDone}
+                          loadingButtons={loadingButtons}
                         />
                       ))}
                     </div>
@@ -586,12 +593,13 @@ function ProfilePage() {
                       <p className="text-gray-600 text-center">No fulfilled orders.</p>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {fulfilledOrders.map(order => (
+                        {fulfilledOrders.map((order) => (
                           <OrderCard
                             key={order._id}
                             order={order}
                             formatPaymentMethod={formatPaymentMethod}
                             isSeller={true}
+                            loadingButtons={loadingButtons}
                           />
                         ))}
                       </div>
@@ -645,7 +653,7 @@ function ProfilePage() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className={`w-full px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
+                      className={`w-full px-6 py-2 rounded-lg text-white font-semibold ${loading ? 'bg-gray-400 blink' : 'bg-blue-600 hover:bg-blue-700'} transition-colors`}
                     >
                       {loading ? 'Adding...' : 'Add Product'}
                     </button>
