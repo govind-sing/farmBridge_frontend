@@ -4,17 +4,33 @@ import { Link } from 'react-router-dom';
 
 function Navbar() {
   return (
-    <nav className="bg-green-600 p-4">
-      <div className="container mx-auto flex justify-between items-center">
-        <Link to="/" className="text-white text-xl font-bold">Agri Market</Link>
-        <div className="space-x-4">
-          <Link to="/" className="text-white hover:text-gray-200">Products</Link>
-          <Link to="/profile" className="text-white hover:text-gray-200">Profile</Link>
-          <Link to="/plant" className="text-white hover:text-gray-200">Plant Info</Link>
-          <Link to="/food" className="text-white hover:text-gray-200">Food Info</Link>
-          {/* Placeholder for Ingredient Analyzer */}
-          <Link to="/ingredient" className="text-white hover:text-gray-200">Ingredient Analyzer</Link>
+    <nav className="sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-gray-200">
+      <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+        
+        {/* Logo */}
+        <Link 
+          to="/" 
+          className="text-lg font-semibold text-gray-900 tracking-tight"
+        >
+          AgriMarket
+        </Link>
+
+        {/* Links */}
+        <div className="flex items-center gap-6 text-sm font-medium">
+          <Link 
+            to="/" 
+            className="text-gray-600 hover:text-gray-900 transition"
+          >
+            Products
+          </Link>
+          <Link 
+            to="/profile" 
+            className="text-gray-600 hover:text-gray-900 transition"
+          >
+            Profile
+          </Link>
         </div>
+
       </div>
     </nav>
   );

@@ -56,10 +56,12 @@ export const login = (data) => api.post('/auth/login', data);
 export const logout = () => api.post('/auth/logout');
 export const identifyPlant = (formData) =>
   api.post('/plant/identify', formData, {
+    timeout: 30000, // 30-second timeout
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 export const detectDisease = (formData) =>
   api.post('/plant/disease', formData, {
+    timeout: 30000, // 30-second timeout
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 export const getFoodInfo = (query) => api.post('/food/info', { query });
