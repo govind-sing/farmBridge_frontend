@@ -6,6 +6,8 @@ import ProfilePage from './pages/ProfilePage';
 import AuthPage from './pages/AuthPage';
 import Navbar from './components/Navbar';
 import PaymentPage from './pages/PaymentPage';
+import AboutUs from './pages/aboutUS';
+import FarmerProfilePage from './pages/Farmerprofilepage';
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route path="/payment" element={<PaymentPage />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/farmer/:farmerId" element={<FarmerProfilePage />} />
       </Routes>
     </div>
   );

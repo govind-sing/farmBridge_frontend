@@ -12,7 +12,7 @@ function Navbar() {
           to="/" 
           className="text-lg font-semibold text-gray-900 tracking-tight"
         >
-          AgriMarket
+          FarmBridge
         </Link>
 
         {/* Links */}
@@ -28,6 +28,12 @@ function Navbar() {
             className="text-gray-600 hover:text-gray-900 transition"
           >
             Profile
+          </Link>
+          <Link 
+            to="/about" 
+            className="text-gray-600 hover:text-gray-900 transition"
+          >
+            About us
           </Link>
         </div>
 

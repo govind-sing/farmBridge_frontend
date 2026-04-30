@@ -53,7 +53,7 @@ function PaymentPage() {
         setLoading(false);
         setPaymentStatus('success');
         setTimeout(() => {
-          navigate('/profile', { state: { paymentSuccess: true } });
+          navigate('/', { state: { paymentSuccess: true } });
         }, 2000);
       }, 1200);
 
